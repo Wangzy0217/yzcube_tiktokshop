@@ -27,7 +27,13 @@ import {
   RotateCw,
   X,
   FolderOpen,
-  Image
+  Image,
+  Undo2,
+  Redo2,
+  Eraser,
+  Heading,
+  Maximize2,
+  AlignJustify
 } from 'lucide-react';
 
 interface ProductEditorProps {
@@ -50,7 +56,6 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
   
   // Image State
   // Index 0 is Main Image. Indices 1-8 are secondary.
-  // We initialize with empty strings or nulls to represent slots
   const [images, setImages] = useState<(string | null)[]>(Array(9).fill(null));
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -58,6 +63,10 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
   const [descriptionContent, setDescriptionContent] = useState('');
+  
+  // Hover state for popovers (images and video)
+  const [hoveredUploadId, setHoveredUploadId] = useState<string | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeUploadIndexRef = useRef<number | null>(null);
@@ -79,6 +88,18 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  };
+
+  // --- Hover Logic ---
+  const handleMouseEnter = (id: string) => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    setHoveredUploadId(id);
+  };
+
+  const handleMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+        setHoveredUploadId(null);
+    }, 200); // Delay to allow moving to popover
   };
 
   // --- Image Handling Logic ---
@@ -105,11 +126,7 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
     const newImages = [...images];
     newImages[index] = null;
     
-    // Shift remaining images left to fill gap, but keep index 0 as main
-    // Actually, usually in these UIs, if you delete a secondary image, the others shift.
-    // If you delete main, the first secondary might become main or it stays empty.
-    // Let's implement simple shifting for now:
-    // Filter out nulls, then pad with nulls
+    // Shift logic
     const validImages = newImages.filter(img => img !== null);
     const resultImages = Array(9).fill(null);
     validImages.forEach((img, i) => {
@@ -125,8 +142,37 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
     setIsEditModalOpen(true);
   };
 
+  // Reusable Upload Popover Content
+  // Updated positioning: Use a wrapper with padding-bottom (pb-2.5) to bridge the gap between box and bubble.
+  const UploadPopover = ({ onLocalFileClick }: { onLocalFileClick: () => void }) => (
+    <div 
+        className="absolute bottom-full left-1/2 -translate-x-1/2 pb-2.5 z-50 cursor-default"
+        onMouseEnter={() => {
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        }}
+        onMouseLeave={handleMouseLeave}
+    >
+        <div className="bg-white rounded-[8px] shadow-[0_4px_16px_rgba(0,0,0,0.12)] p-4 flex gap-4 min-w-[200px] border border-gray-100 animate-fade-in relative">
+            <button 
+                onClick={onLocalFileClick}
+                className="flex flex-col items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded-[4px] transition-colors group/btn flex-1"
+            >
+                <Upload className="w-5 h-5 text-[#161823] group-hover/btn:text-[#009E91]" />
+                <span className="text-[12px] text-[#161823] whitespace-nowrap">Local file</span>
+            </button>
+            <button className="flex flex-col items-center gap-2 px-2 py-1 hover:bg-gray-50 rounded-[4px] transition-colors group/btn flex-1">
+                <Image className="w-5 h-5 text-[#161823] group-hover/btn:text-[#009E91]" />
+                <span className="text-[12px] text-[#161823] whitespace-nowrap">Media center</span>
+            </button>
+            
+            {/* Arrow Triangle */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-white drop-shadow-sm"></div>
+        </div>
+    </div>
+  );
+
   return (
-    <div className="w-full max-w-[1200px] mx-auto p-6 pb-32 relative">
+    <div className="w-[1184px] mx-auto p-6 pb-32 relative">
         <input 
             type="file" 
             ref={fileInputRef} 
@@ -382,25 +428,21 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="w-full h-full border border-dashed border-[#E5E7EB] group-hover:border-[#009E91] group-hover:bg-[#F0FBF9] rounded-[4px] flex flex-col items-center justify-center relative transition-all duration-200">
+                                                <div 
+                                                    className="w-full h-full border border-dashed border-[#E5E7EB] hover:border-[#009E91] hover:bg-[#F0FBF9] rounded-[4px] flex flex-col items-center justify-center relative transition-all duration-200"
+                                                    onMouseEnter={() => handleMouseEnter('img-0')}
+                                                    onMouseLeave={handleMouseLeave}
+                                                >
                                                     {/* Default State */}
                                                     <div className="flex flex-col items-center">
                                                         <Upload className="w-6 h-6 text-[#161823] mb-2" />
                                                         <span className="text-[13px] text-[#161823]">Upload main image</span>
                                                     </div>
 
-                                                    {/* Popover - Above the slot */}
-                                                    <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 bg-white rounded-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.15)] p-2 hidden group-hover:flex flex-col gap-1 z-50 w-[140px] border border-gray-100 animate-fade-in after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-white">
-                                                        <button 
-                                                            onClick={() => triggerUpload(0)}
-                                                            className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-[4px] text-[13px] text-[#161823] transition-colors"
-                                                        >
-                                                            <FolderOpen className="w-3.5 h-3.5" /> Local file
-                                                        </button>
-                                                        <button className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 rounded-[4px] text-[13px] text-[#161823] transition-colors">
-                                                            <Image className="w-3.5 h-3.5" /> Media center
-                                                        </button>
-                                                    </div>
+                                                    {/* New Popover Style */}
+                                                    {hoveredUploadId === 'img-0' && (
+                                                        <UploadPopover onLocalFileClick={() => triggerUpload(0)} />
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -412,10 +454,8 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
                                      {PLACEHOLDER_URLS.map((placeholder, i) => {
                                          const index = i + 1; // 1-based index for logic
                                          const hasImage = !!images[index];
-                                         // Enabled if previous slot is filled. 
-                                         // For index 1, enabled if index 0 filled.
-                                         // For index 2, enabled if index 1 filled.
                                          const isEnabled = !!images[index - 1];
+                                         const elementId = `img-${index}`;
 
                                          return (
                                              <div key={index} className="relative group w-[118px] h-[118px] hover:z-30">
@@ -446,26 +486,27 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className={`w-full h-full rounded-[4px] border ${isEnabled ? 'border-dashed border-[#E5E7EB] hover:border-[#009E91] hover:bg-[#F0FBF9]' : 'border-transparent'} bg-[#F8F8F8] flex items-center justify-center relative transition-all duration-200`}>
-                                                        <img 
-                                                            src={placeholder} 
-                                                            alt="Placeholder" 
-                                                            className={`w-1/2 h-1/2 object-contain opacity-50 ${!isEnabled ? 'grayscale opacity-30' : ''}`} 
-                                                        />
-                                                        
-                                                        {/* Popover (Only if Enabled) - Above the slot */}
-                                                        {isEnabled && (
-                                                            <div className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 bg-white rounded-[4px] shadow-[0_4px_12px_rgba(0,0,0,0.15)] p-1.5 hidden group-hover:flex flex-col gap-0.5 z-50 w-[130px] border border-gray-100 animate-fade-in after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-white">
-                                                                <button 
-                                                                    onClick={() => triggerUpload(index)}
-                                                                    className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded-[2px] text-[12px] text-[#161823] transition-colors"
-                                                                >
-                                                                    <FolderOpen className="w-3 h-3" /> Local file
-                                                                </button>
-                                                                <button className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 rounded-[2px] text-[12px] text-[#161823] transition-colors">
-                                                                    <Image className="w-3 h-3" /> Media center
-                                                                </button>
+                                                    <div 
+                                                        className={`w-full h-full rounded-[4px] border ${isEnabled ? 'border-dashed border-[#E5E7EB] hover:border-[#009E91] hover:bg-[#F0FBF9] bg-white' : 'border-transparent bg-[#F8F8F8]'} flex items-center justify-center relative transition-all duration-200`}
+                                                        onMouseEnter={() => isEnabled && handleMouseEnter(elementId)}
+                                                        onMouseLeave={handleMouseLeave}
+                                                    >
+                                                        {isEnabled ? (
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <Upload className="w-6 h-6 text-[#161823] mb-2" />
+                                                                <span className="text-[12px] text-[#161823]">Upload image</span>
                                                             </div>
+                                                        ) : (
+                                                            <img 
+                                                                src={placeholder} 
+                                                                alt="Placeholder" 
+                                                                className={`w-1/2 h-1/2 object-contain opacity-50 ${!isEnabled ? 'grayscale opacity-30' : ''}`} 
+                                                            />
+                                                        )}
+                                                        
+                                                        {/* Popover */}
+                                                        {isEnabled && hoveredUploadId === elementId && (
+                                                            <UploadPopover onLocalFileClick={() => triggerUpload(index)} />
                                                         )}
                                                     </div>
                                                 )}
@@ -518,38 +559,47 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
                      <div>
                         <div className="flex items-center gap-1 mb-2">
                             <span className="text-red-500">*</span>
-                            <label className="text-[14px] font-medium text-[#161823]">Product description</label>
-                            <HelpCircle className="w-3.5 h-3.5 text-[#80838D]" />
+                            <label className="text-[14px] font-medium text-[#161823]">Description</label>
                         </div>
                         
                         <div className="border border-gray-300 rounded-[4px] overflow-hidden focus-within:border-[#009E91] transition-colors relative">
-                            {/* Toolbar */}
-                            <div className="bg-[#F8F8F8] border-b border-gray-300 p-2 flex items-center gap-1 flex-wrap">
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Bold"><Bold className="w-4 h-4" /></button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Italic"><Italic className="w-4 h-4" /></button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Underline"><Underline className="w-4 h-4" /></button>
-                                <div className="w-[1px] h-4 bg-gray-300 mx-1"></div>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Bullet List"><List className="w-4 h-4" /></button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Ordered List"><ListOrdered className="w-4 h-4" /></button>
-                                <div className="w-[1px] h-4 bg-gray-300 mx-1"></div>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Align Left"><AlignLeft className="w-4 h-4" /></button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Align Center"><AlignCenter className="w-4 h-4" /></button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Align Right"><AlignRight className="w-4 h-4" /></button>
-                                <div className="w-[1px] h-4 bg-gray-300 mx-1"></div>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Insert Image"><ImageIcon className="w-4 h-4" /></button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Insert Video"><Video className="w-4 h-4" /></button>
-                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600" title="Insert Link"><LinkIcon className="w-4 h-4" /></button>
+                            {/* New Toolbar - Matching Screenshot */}
+                            <div className="bg-[#F8F8F8] border-b border-gray-300 px-3 py-2 flex items-center gap-1 flex-wrap">
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Undo"><Undo2 className="w-4 h-4" /></button>
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Redo"><Redo2 className="w-4 h-4" /></button>
+                                <div className="w-[1px] h-4 bg-gray-300 mx-2"></div>
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Clear format"><Eraser className="w-4 h-4" /></button>
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Insert Image"><ImageIcon className="w-4 h-4" /></button>
+                                <div className="w-[1px] h-4 bg-gray-300 mx-2"></div>
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Heading"><Heading className="w-4 h-4" /></button>
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Bold"><Bold className="w-4 h-4" /></button>
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Italic"><Italic className="w-4 h-4" /></button>
+                                <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Underline"><Underline className="w-4 h-4" /></button>
+                                <div className="w-[1px] h-4 bg-gray-300 mx-2"></div>
+                                <button className="flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="List">
+                                    <List className="w-4 h-4" />
+                                    <ChevronDown className="w-3 h-3" />
+                                </button>
+                                <div className="w-[1px] h-4 bg-gray-300 mx-2"></div>
+                                <button className="flex items-center gap-0.5 px-1.5 py-1 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Align">
+                                    <AlignJustify className="w-4 h-4" />
+                                    <ChevronDown className="w-3 h-3" />
+                                </button>
+                                
+                                <div className="ml-auto">
+                                    <button className="p-1.5 hover:bg-gray-200 rounded text-gray-600 transition-colors" title="Maximize"><Maximize2 className="w-4 h-4" /></button>
+                                </div>
                             </div>
                             
                             {/* Editor Area */}
                             <div className="relative">
                                 {!isDescriptionFocused && descriptionContent.trim() === '' && (
-                                    <div className="absolute top-4 left-4 text-gray-400 text-[14px] pointer-events-none">
-                                        Enter your product description here...
+                                    <div className="absolute top-4 left-4 text-gray-400 text-[14px] pointer-events-none font-light">
+                                        Enter the description
                                     </div>
                                 )}
                                 <div 
-                                    className="min-h-[400px] p-4 bg-white outline-none text-[14px] leading-relaxed" 
+                                    className="min-h-[400px] p-4 bg-white outline-none text-[14px] leading-relaxed resize-y overflow-auto" 
                                     contentEditable
                                     ref={descriptionRef}
                                     onFocus={() => setIsDescriptionFocused(true)}
@@ -566,18 +616,33 @@ const ProductEditor: React.FC<ProductEditorProps> = ({ onCancel }) => {
                                     }}
                                 >
                                 </div>
+                                {/* Resize handle hint (native usually handles this, but we can add visual if needed) */}
                             </div>
                         </div>
                      </div>
 
                      {/* Product Video */}
                      <div className="mt-8">
-                         <label className="block text-[14px] font-medium text-[#161823] mb-2">
-                                Product video
-                        </label>
-                        <div className="w-[100px] h-[100px] border border-dashed border-gray-300 bg-gray-50 rounded-[4px] flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors text-gray-500">
-                             <Video className="w-6 h-6 mb-1" />
-                             <span className="text-[12px]">Add video</span>
+                         <div className="flex items-center gap-1 mb-1">
+                            <label className="text-[14px] font-medium text-[#161823]">Product video</label>
+                            <HelpCircle className="w-3.5 h-3.5 text-[#80838D]" />
+                         </div>
+                         <p className="text-[12px] text-[#80838D] mb-4">
+                            Video aspect ratio should be between 9:16 to 16:9. Maximum file size: 100 MB. Format: MP4, MOV, MKV, AVI
+                         </p>
+
+                        <div 
+                            className="w-[120px] h-[120px] border border-dashed border-[#009E91] rounded-[6px] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0FBF9] transition-colors relative group"
+                            onMouseEnter={() => handleMouseEnter('video-upload')}
+                            onMouseLeave={handleMouseLeave}
+                        >
+                             <Upload className="w-6 h-6 text-[#161823] mb-2" />
+                             <span className="text-[13px] text-[#161823]">Video</span>
+
+                             {/* Hover Popover for Video */}
+                             {hoveredUploadId === 'video-upload' && (
+                                <UploadPopover onLocalFileClick={() => {}} />
+                             )}
                         </div>
                      </div>
                 </div>

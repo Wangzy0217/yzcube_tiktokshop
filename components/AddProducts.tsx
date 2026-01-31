@@ -68,16 +68,18 @@ const AddProducts: React.FC<AddProductsProps> = ({ onNavigate }) => {
                     Add products by entering the information yourself.
                 </p>
                 
-                <div className="mt-auto flex w-fit shadow-sm">
-                    <button 
-                      onClick={handleAddProduct}
-                      className="bg-[#009E91] hover:bg-[#008C80] text-white px-5 py-2 rounded-l-[6px] text-[14px] font-medium transition-colors"
-                    >
-                        Add product
-                    </button>
-                    <button className="bg-[#009E91] hover:bg-[#008C80] text-white px-2.5 py-2 rounded-r-[6px] border-l border-[#008C80] flex items-center justify-center transition-colors">
-                        <ChevronDown className="w-4 h-4" />
-                    </button>
+                <div className="mt-auto">
+                    <div className="flex w-fit shadow-sm">
+                        <button 
+                          onClick={handleAddProduct}
+                          className="bg-[#009E91] hover:bg-[#008C80] text-white px-5 py-2 rounded-l-[6px] text-[14px] font-medium transition-colors"
+                        >
+                            Add product
+                        </button>
+                        <button className="bg-[#009E91] hover:bg-[#008C80] text-white px-2.5 py-2 rounded-r-[6px] border-l border-[#008C80] flex items-center justify-center transition-colors">
+                            <ChevronDown className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
