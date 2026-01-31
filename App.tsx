@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import ManageProducts from './components/ManageProducts';
 import AddProducts from './components/AddProducts';
+import ProductEditor from './components/ProductEditor';
 import { LanguageProvider } from './contexts/LanguageContext';
 
 const App: React.FC = () => {
@@ -24,7 +25,9 @@ const App: React.FC = () => {
       case 'Manage products':
         return <ManageProducts />;
       case 'Add products':
-        return <AddProducts />;
+        return <AddProducts onNavigate={setActivePage} />;
+      case 'ProductEditor':
+        return <ProductEditor onCancel={() => setActivePage('Add products')} />;
       default:
         // Default to Dashboard if page isn't implemented yet, or show a placeholder
         return <Dashboard />;

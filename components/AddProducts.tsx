@@ -22,7 +22,17 @@ const drafts = [
   }
 ];
 
-const AddProducts: React.FC = () => {
+interface AddProductsProps {
+  onNavigate?: (page: string) => void;
+}
+
+const AddProducts: React.FC<AddProductsProps> = ({ onNavigate }) => {
+  const handleAddProduct = () => {
+    if (onNavigate) {
+      onNavigate('ProductEditor');
+    }
+  };
+
   return (
     <div className="w-[1280px] mx-auto p-8 pb-32">
       <style>{`
@@ -59,7 +69,10 @@ const AddProducts: React.FC = () => {
                 </p>
                 
                 <div className="mt-auto flex w-fit shadow-sm">
-                    <button className="bg-[#009E91] hover:bg-[#008C80] text-white px-5 py-2 rounded-l-[6px] text-[14px] font-medium transition-colors">
+                    <button 
+                      onClick={handleAddProduct}
+                      className="bg-[#009E91] hover:bg-[#008C80] text-white px-5 py-2 rounded-l-[6px] text-[14px] font-medium transition-colors"
+                    >
                         Add product
                     </button>
                     <button className="bg-[#009E91] hover:bg-[#008C80] text-white px-2.5 py-2 rounded-r-[6px] border-l border-[#008C80] flex items-center justify-center transition-colors">
